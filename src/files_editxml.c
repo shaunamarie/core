@@ -1410,13 +1410,6 @@ static bool SanityCheckTreeInsertions(Attributes a, Promise *pp)
         return false;
     }
 
-    else if (!a.xml.haveselectxpath)
-    {
-        CfOut(cf_error, "",
-              "!! Tree insertion requires select_xpath to be specified, unless inserting into an empty file");
-        return false;
-    }
-
     return true;
 }
 
