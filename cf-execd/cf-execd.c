@@ -712,7 +712,7 @@ static bool ScheduleRun(EvalContext *ctx, Policy **policy, GenericAgentConfig *c
      * FIXME: this logic duplicates the one from cf-serverd.c. Unify ASAP.
      */
 
-    if (CheckNewPromises(ctx, config->input_file, InputFiles(ctx, *policy)) == RELOAD_FULL)
+    if (CheckNewPromises(ctx, config->input_file, InputFiles(ctx, *policy, config)) == RELOAD_FULL)
     {
         /* Full reload */
 

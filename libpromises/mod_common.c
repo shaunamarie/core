@@ -144,6 +144,7 @@ const BodySyntax CFG_CONTROLBODY[] =
     {"ignore_missing_bundles", DATA_TYPE_OPTION, CF_BOOL,
      "If any bundles in the bundlesequence do not exist, ignore and continue", "false"},
     {"ignore_missing_inputs", DATA_TYPE_OPTION, CF_BOOL, "If any input files do not exist, ignore and continue", "false"},
+    {"expand_input_wildcards", DATA_TYPE_OPTION, CF_BOOL, "If any inputs filenames contain wildcards, expand and continue", "false"},
     {"inputs", DATA_TYPE_STRING_LIST, ".*", "List of additional filenames to parse for promises"},
     {"version", DATA_TYPE_STRING, "", "Scalar version string for this configuration"},
     {"lastseenexpireafter", DATA_TYPE_INT, CF_VALRANGE, "Number of minutes after which last-seen entries are purged",

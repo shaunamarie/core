@@ -576,7 +576,7 @@ void CheckFileChanges(EvalContext *ctx, Policy **policy, GenericAgentConfig *con
 
     CfDebug("Checking file updates on %s\n", config->input_file);
 
-    if (NewPromiseProposals(ctx, config->input_file, InputFiles(ctx, *policy)))
+    if (NewPromiseProposals(ctx, config->input_file, InputFiles(ctx, *policy, config)))
     {
         CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> New promises detected...\n");
 

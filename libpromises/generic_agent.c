@@ -54,6 +54,8 @@
 #include "misc_lib.h"
 #include "fncall.h"
 #include "rlist.h"
+#include "dir.h"
+#include "matching.h"
 
 #ifdef HAVE_NOVA
 #include "cf.nova.h"
@@ -63,6 +65,7 @@
 #endif
 
 #include <assert.h>
+#include <libgen.h>
 
 static pthread_once_t pid_cleanup_once = PTHREAD_ONCE_INIT;
 
@@ -76,6 +79,7 @@ static bool MissingInputFile(const char *input_file);
 static void CheckControlPromises(EvalContext *ctx, GenericAgentConfig *config, const Body *control_body);
 static void CheckVariablePromises(EvalContext *ctx, Seq *var_promises);
 static void CheckCommonClassPromises(EvalContext *ctx, Seq *class_promises, const ReportContext *report_context);
+static void ExpandWildInputs(Rlist *start, Rlist *sl, char *wildinput, char *inputsdir);
 
 #if !defined(__MINGW32__)
 static void OpenLog(int facility);
@@ -355,7 +359,7 @@ Policy *GenericAgentLoadPolicy(EvalContext *ctx, AgentType agent_type, GenericAg
 
         if (PolicyIsRunnable(main_policy))
         {
-            Policy *aux_policy = Cf3ParseFiles(ctx, config, InputFiles(ctx, main_policy), errors, report_context);
+            Policy *aux_policy = Cf3ParseFiles(ctx, config, InputFiles(ctx, main_policy, config), errors, report_context);
             if (aux_policy)
             {
                 main_policy = PolicyMerge(main_policy, aux_policy);
@@ -970,8 +974,15 @@ Seq *ControlBodyConstraints(const Policy *policy, AgentType agent)
     return NULL;
 }
 
-const Rlist *InputFiles(EvalContext *ctx, Policy *policy)
+/*******************************************************************/
+
+const Rlist *InputFiles(EvalContext *ctx, Policy *policy, GenericAgentConfig *config)
 {
+    char inputsdir[CF_BUFSIZE];
+
+    strncpy(inputsdir, GenericAgentResolveInputPath(config->input_file, config->input_file), CF_BUFSIZE);
+    ChopLastNode(inputsdir);
+
     Body *body_common_control = PolicyGetBody(policy, NULL, "common", "control");
     if (!body_common_control)
     {
@@ -983,7 +994,46 @@ const Rlist *InputFiles(EvalContext *ctx, Policy *policy)
     Constraint *cp = EffectiveConstraint(ctx, potential_inputs);
     SeqDestroy(potential_inputs);
 
+    //check and expand wildinputs
+    if (config->expand_input_wildcards)
+    {
+        CfOut(OUTPUT_LEVEL_VERBOSE, "", " -> Expanding wildcards for input files in directory: %s (see expand_input_wildcards)\n", inputsdir);
+        Rlist *start = cp->rval.item;
+
+        for (Rlist *sl = start; sl != NULL; sl = sl->next)
+        {
+            if (IsPathRegex(sl->item))
+            {
+                ExpandWildInputs(start, sl, sl->item, inputsdir);
+            }
+        }
+    }
+
     return cp ? cp->rval.item : NULL;
+}
+
+/*******************************************************************/
+
+static void ExpandWildInputs(Rlist *start, Rlist *sl, char *wildinput, char *inputsdir)
+{
+    //expand wildinputs, adding each file found to rlist
+    const struct dirent *dirp = NULL;
+    Dir *dirh;
+
+    if ((dirh = OpenDirLocal(inputsdir)) == NULL)
+    {
+        CfOut(OUTPUT_LEVEL_VERBOSE, "", " !! Could not open input files directory: %s \n", inputsdir);
+        return;
+    }
+
+    for (dirp = ReadDir(dirh); dirp != NULL; dirp = ReadDir(dirh))
+    {
+        if (StringMatch(wildinput, dirp->d_name))
+        {
+            CfOut(OUTPUT_LEVEL_VERBOSE, "", "Link %s matched regex %s\n", dirp->d_name, wildinput);
+            RlistAppendScalarIdemp(&start, dirp->d_name);
+        }
+    }
 }
 
 /*******************************************************************/
@@ -1353,6 +1403,12 @@ static void CheckControlPromises(EvalContext *ctx, GenericAgentConfig *config, c
             EvalContextHeapAddHard(ctx, VDOMAIN);
         }
 
+        if (strcmp(cp->lval, CFG_CONTROLBODY[COMMON_CONTROL_EXPAND_INPUT_WILDCARDS].lval) == 0)
+        {
+            CfOut(OUTPUT_LEVEL_VERBOSE, "", "SET expand_input_wildcards %s\n", RvalScalarValue(cp->rval));
+            config->expand_input_wildcards = BooleanFromString(cp->rval.item);
+        }
+
         if (strcmp(cp->lval, CFG_CONTROLBODY[COMMON_CONTROL_IGNORE_MISSING_INPUTS].lval) == 0)
         {
             CfOut(OUTPUT_LEVEL_VERBOSE, "", "SET ignore_missing_inputs %s\n", RvalScalarValue(cp->rval));
@@ -1690,6 +1746,7 @@ GenericAgentConfig *GenericAgentConfigNewDefault(AgentType agent_type)
     config->check_runnable = agent_type != AGENT_TYPE_COMMON;
     config->ignore_missing_bundles = false;
     config->ignore_missing_inputs = false;
+    config->expand_input_wildcards = false;
     config->debug_mode = false;
 
     config->heap_soft = NULL;

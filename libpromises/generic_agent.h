@@ -48,6 +48,7 @@ typedef struct
     // change to evaluation behavior from the policy itself
     bool ignore_missing_bundles;
     bool ignore_missing_inputs;
+    bool expand_input_wildcards;
 
     union
     {
@@ -89,7 +90,7 @@ Seq *ControlBodyConstraints(const Policy *policy, AgentType agent);
  * @param policy Policy where inputs are specified
  * @return Pointer to the Rlist in the DOM
  */
-const Rlist *InputFiles(EvalContext *ctx, Policy *policy);
+const Rlist *InputFiles(EvalContext *ctx, Policy *policy, GenericAgentConfig *config);
 
 
 void SetFacility(const char *retval);

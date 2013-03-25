@@ -146,7 +146,7 @@ static char **TranslateOldBootstrapOptionsSeparate(int *argc_new, char **argv);
 static char **TranslateOldBootstrapOptionsConcatenated(int argc, char **argv);
 static void FreeStringArray(int size, char **array);
 static void CheckAgentAccess(Rlist *list, const Rlist *input_files);
-static void KeepControlPromises(EvalContext *ctx, Policy *policy);
+static void KeepControlPromises(EvalContext *ctx, Policy *policy, GenericAgentConfig *config);
 static void KeepAgentPromise(EvalContext *ctx, Promise *pp, const ReportContext *report_context);
 static int NewTypeContext(TypeSequence type);
 static void DeleteTypeContext(EvalContext *ctx, Bundle *bp, TypeSequence type, const ReportContext *report_context);
@@ -639,7 +639,7 @@ static void KeepPromises(EvalContext *ctx, Policy *policy, GenericAgentConfig *c
 {
     double efficiency, model;
 
-    KeepControlPromises(ctx, policy);
+    KeepControlPromises(ctx, policy, config);
     KeepPromiseBundles(ctx, policy, config, report_context);
 
 // TOPICS counts the number of currently defined promises
@@ -659,7 +659,7 @@ static void KeepPromises(EvalContext *ctx, Policy *policy, GenericAgentConfig *c
 /* Level 2                                                         */
 /*******************************************************************/
 
-void KeepControlPromises(EvalContext *ctx, Policy *policy)
+void KeepControlPromises(EvalContext *ctx, Policy *policy, GenericAgentConfig *config)
 {
     Rval retval;
     Rlist *rp;
@@ -711,7 +711,7 @@ void KeepControlPromises(EvalContext *ctx, Policy *policy)
             if (strcmp(cp->lval, CFA_CONTROLBODY[AGENT_CONTROL_AGENTACCESS].lval) == 0)
             {
                 ACCESSLIST = (Rlist *) retval.item;
-                CheckAgentAccess(ACCESSLIST, InputFiles(ctx, policy));
+                CheckAgentAccess(ACCESSLIST, InputFiles(ctx, policy, config));
                 continue;
             }
 
